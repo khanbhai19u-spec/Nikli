@@ -1,0 +1,53 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract project from bundle
+        run: |
+          python3 - <<'PY'
+          import os, sys, glob
+          found = glob.glob('**/nikli-directory-bundle.txt', recursive=True)
+          if not found:
+              print('nikli-directory-bundle.txt not found in repo')
+              sys.exit(1)
+          text = open(found[0], encoding='utf-8').read().replace('\r', '')
+          start, end = '===== FILE: ', ' ====='
+          cur, buf, n = None, [], 0
+          for line in text.split('\n'):
+              if line.startswith(start) and line.endswith(end):
+                  cur = line[len(start):-len(end)].strip()
+                  buf = []
+              elif line.strip() == '===== END FILE =====' and cur:
+                  if not cur.startswith('.github'):
+                      p = os.path.join('proj', cur)
+                      os.makedirs(os.path.dirname(p), exist_ok=True)
+                      with open(p, 'w', encoding='utf-8') as f:
+                          f.write('\n'.join(buf).rstrip('\n') + '\n')
+                      n += 1
+                  cur = None
+              elif cur is not None:
+                  buf.append(line)
+          print('Extracted files:', n)
+          if n < 10:
+              sys.exit(1)
+          PY
+          find proj -type f
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build debug APK
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nikli-Directory-APK
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
