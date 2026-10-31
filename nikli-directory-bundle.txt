@@ -1,0 +1,426 @@
+===== FILE: settings.gradle =====
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = "NikliDirectory"
+include ':app'
+
+===== END FILE =====
+
+===== FILE: build.gradle =====
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
+
+===== END FILE =====
+
+===== FILE: gradle.properties =====
+org.gradle.jvmargs=-Xmx2048m
+android.useAndroidX=true
+android.nonTransitiveRClass=true
+
+===== END FILE =====
+
+===== FILE: .github/workflows/build.yml =====
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nikli-Directory-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+===== END FILE =====
+
+===== FILE: app/build.gradle =====
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'com.nikli.directory'
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.nikli.directory"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+===== END FILE =====
+
+===== FILE: app/src/main/AndroidManifest.xml =====
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+    <queries>
+        <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>
+        <intent><action android:name="android.intent.action.SENDTO" /><data android:scheme="mailto" /></intent>
+        <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
+    </queries>
+</manifest>
+
+===== END FILE =====
+
+===== FILE: app/src/main/java/com/nikli/directory/MainActivity.java =====
+package com.nikli.directory;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MainActivity extends Activity {
+    private WebView web;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        web = new WebView(this);
+        setContentView(web);
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(true);
+        s.setTextZoom(100);
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                Uri u = r.getUrl();
+                String sc = u.getScheme();
+                if (sc == null || "file".equals(sc)) return false;
+                try {
+                    Intent i;
+                    if ("tel".equals(sc)) i = new Intent(Intent.ACTION_DIAL, u);
+                    else if ("mailto".equals(sc)) i = new Intent(Intent.ACTION_SENDTO, u);
+                    else i = new Intent(Intent.ACTION_VIEW, u);
+                    startActivity(i);
+                } catch (Exception e) { }
+                return true;
+            }
+        });
+        web.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    public void onBackPressed() {
+        web.evaluateJavascript("(window.goBack&&window.goBack())?'1':'0'", v -> {
+            if (v == null || !v.contains("1")) finish();
+        });
+    }
+}
+
+===== END FILE =====
+
+===== FILE: app/src/main/res/values/strings.xml =====
+<resources>
+    <string name="app_name">নিকলী ডিরেক্টরি</string>
+</resources>
+
+===== END FILE =====
+
+===== FILE: app/src/main/res/values/styles.xml =====
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0B5D4B</item>
+        <item name="android:navigationBarColor">#0B5D4B</item>
+        <item name="android:windowBackground">#0B5D4B</item>
+    </style>
+</resources>
+
+===== END FILE =====
+
+===== FILE: app/src/main/res/drawable/ic_launcher.xml =====
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#0B5D4B" android:pathData="M12,12m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0"/>
+    <group android:scaleX="0.6" android:scaleY="0.6" android:pivotX="12" android:pivotY="12">
+        <path android:fillColor="#FFFFFF" android:pathData="M6.62,10.79c1.44,2.83 3.76,5.14 6.59,6.59l2.2,-2.2c0.27,-0.27 0.67,-0.36 1.02,-0.24 1.12,0.37 2.33,0.57 3.57,0.57 0.55,0 1,0.45 1,1V20c0,0.55 -0.45,1 -1,1 -9.39,0 -17,-7.61 -17,-17 0,-0.55 0.45,-1 1,-1h3.5c0.55,0 1,0.45 1,1 0,1.25 0.2,2.45 0.57,3.57 0.11,0.35 0.03,0.74 -0.25,1.02l-2.2,2.2z"/>
+    </group>
+</vector>
+
+===== END FILE =====
+
+===== FILE: app/src/main/assets/index.html =====
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>নিকলী ডিরেক্টরি</title>
+<style>
+:root{--bg:#F3F7F5;--card:#fff;--tx:#10231D;--mut:#5E7169;--pri:#0B5D4B;--pri2:#0E7A62;--acc:#D9A927;--line:#E1EAE6;--red:#C62828;--chip:#E3EFEA}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1714;--card:#16231F;--tx:#E8F1ED;--mut:#93A79F;--pri:#0B5D4B;--pri2:#2BB08E;--acc:#E5C158;--line:#233630;--red:#EF6B6B;--chip:#1D2F29}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans Bengali","Hind Siliguri",sans-serif}
+#app{display:flex;flex-direction:column;height:100%}
+header{background:var(--pri);color:#fff;padding:14px 14px 12px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+header h1{margin:0;font-size:20px;font-weight:700}
+header p{margin:2px 0 10px;font-size:12px;opacity:.8}
+.search{display:flex;align-items:center;background:#fff;border-radius:12px;padding:0 12px;gap:8px}
+.search svg{flex:none;fill:#5E7169}
+.search input{flex:1;border:0;outline:0;font-size:16px;padding:12px 0;background:transparent;color:#10231D;font-family:inherit}
+.search button{border:0;background:none;font-size:20px;color:#5E7169;display:none;padding:4px}
+main{flex:1;overflow-y:auto;padding:12px 12px 24px;-webkit-overflow-scrolling:touch}
+.sos{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:12px}
+.sos h3{margin:0 0 8px;font-size:13px;color:var(--red)}
+.sosrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sosrow a{display:flex;flex-direction:column;align-items:center;text-decoration:none;background:var(--chip);color:var(--tx);border-radius:10px;padding:8px 2px}
+.sosrow b{font-size:17px;color:var(--red)}
+.sosrow span{font-size:10.5px;color:var(--mut);margin-top:2px;text-align:center}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;font-size:13.5px;font-family:inherit}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.sec{margin:6px 2px 8px;font-size:13px;font-weight:700;color:var(--pri2);letter-spacing:.2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.top{display:flex;gap:8px;align-items:flex-start}
+.nm{flex:1;font-size:15px;line-height:1.45;font-weight:600}
+.star{flex:none;border:0;background:none;padding:2px;fill:none;stroke:var(--mut);stroke-width:2}
+.star.on{fill:var(--acc);stroke:var(--acc)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;border:0;border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;font-weight:600}
+.call{background:var(--pri);color:#fff}
+.call svg{fill:#fff}
+.sm{background:var(--chip);color:var(--tx);font-weight:500}
+.sm svg{fill:var(--tx)}
+.empty{text-align:center;color:var(--mut);padding:40px 10px;font-size:14px}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#10231D;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:.95}
+.foot{text-align:center;color:var(--mut);font-size:11.5px;margin-top:14px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>নিকলী উপজেলা ডিরেক্টরি</h1>
+    <p>থানা, হাসপাতাল, সরকারি অফিস ও জরুরি হটলাইন</p>
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input id="q" type="search" placeholder="অফিস বা পদবি খুঁজুন..." autocomplete="off">
+      <button id="clr" aria-label="মুছুন">&times;</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="toast"></div>
+
+<script>
+// [নাম, [ফোন...], ইমেইল, ওয়েবসাইট]
+var D=[
+{id:'law',t:'আইন-শৃঙ্খলা ও নিরাপত্তা',i:[
+["নিকলী থানা (অফিসার ইন-চার্জ - OC)",["01320-095677","01713-373490"]],
+["নিকলী থানা (ইমেইল)",[],"ockis.nik@police.gov.bd"],
+["উপজেলা আনসার ও ভিডিপি কর্মকর্তা",["01722-506258"]],
+["জাতীয় জরুরি সেবা (পুলিশ, ফায়ার সার্ভিস, অ্যাম্বুলেন্স)",["999"]]
+]},
+{id:'adm',t:'প্রশাসন ও ভূমি',i:[
+["উপজেলা নির্বাহী অফিসার (UNO, নিকলী)",["01715-341398","01958-400417"]],
+["উপজেলা নির্বাহী অফিস (ল্যান্ডফোন)",["09432-56001"]],
+["ইউএনও অফিস (ইমেইল)",[],"unonikli@mopa.gov.bd"],
+["সহকারী কমিশনার (ভূমি) / এসিল্যান্ড",["01976-207601"]],
+["উপজেলা ভূমি অফিস",["09432-56020","09432-56043"]],
+["উপজেলা সাব-রেজিস্ট্রার কার্যালয়",["01674-293904"]]
+]},
+{id:'hlt',t:'স্বাস্থ্য ও চিকিৎসা',i:[
+["নিকলী উপজেলা স্বাস্থ্য কমপ্লেক্স (জরুরি বিভাগ)",["01730-324675","01730-324502"]],
+["নিকলী উপজেলা স্বাস্থ্য কমপ্লেক্স (টেলিফোন)",["09432-56004"]],
+["হাসপাতাল (ইমেইল)",[],"nikli@uhfpo.dghs.gov.bd"],
+["উপজেলা স্বাস্থ্য ও পরিবার পরিকল্পনা কর্মকর্তা (UH&FPO)",["01710-067609"]],
+["উপজেলা পরিবার পরিকল্পনা কর্মকর্তা",["01958-144692"]],
+["কিশোরগঞ্জ জেলা সদর হাসপাতাল (রেফারাল)",["0941-61845","01730-324672"]],
+["স্বাস্থ্য বাতায়ন (২৪/৭ সরকারি ডাক্তার পরামর্শ)",["16263"]]
+]},
+{id:'elc',t:'বিদ্যুৎ ও অবকাঠামো',i:[
+["নিকলী পল্লী বিদ্যুৎ অভিযোগ কেন্দ্র (২৪/৭)",["01769-401347"]],
+["নিকলী সাব-জোনাল অফিস (এজিএম - পল্লী বিদ্যুৎ)",["01769-407362"]],
+["কিশোরগঞ্জ পল্লী বিদ্যুৎ সমিতি (প্রধান কার্যালয়)",["01769-401664","01769-400533"]],
+["কেন্দ্রীয় বিদ্যুৎ অভিযোগ হটলাইন",["16899","16999"]],
+["জনস্বাস্থ্য প্রকৌশল (খাবার পানি ও স্যানিটেশন)",["01912-549276"]],
+["উপজেলা প্রকৌশলী (LGED)",["01858-377332"]]
+]},
+{id:'agr',t:'কৃষি, মৎস্য ও প্রাণিসম্পদ',i:[
+["উপজেলা মৎস্য কর্মকর্তা (হাওর মৎস্য সেবা)",["01724-417816"]],
+["উপজেলা কৃষি অফিসার",["01722-284726"]],
+["উপজেলা প্রাণিসম্পদ কর্মকর্তা",["01716-231386"]],
+["উপজেলা খাদ্য নিয়ন্ত্রক",["01712-369853"]],
+["কৃষি কল সেন্টার হটলাইন",["16123"]]
+]},
+{id:'soc',t:'সমাজসেবা, শিক্ষা ও উন্নয়ন',i:[
+["উপজেলা সমাজসেবা কর্মকর্তা",["01961-041484","09432-56027"]],
+["উপজেলা মাধ্যমিক ও প্রাথমিক শিক্ষা অফিসার",["01713-529641"]],
+["উপজেলা রিসোর্স সেন্টার (URC)",["09432-56105"],"urcnikli@yahoo.com"],
+["উপজেলা যুব উন্নয়ন অফিসার",["01721-912016"]],
+["তথ্য আপা প্রকল্প (তথ্য সেবা কর্মকর্তা)",["01744-344298","01793-119414"]],
+["উপজেলা মহিলা বিষয়ক অফিসার",["01718-534909"]],
+["উপজেলা পল্লী উন্নয়ন অফিসার (BRDB)",["01713-575412"]],
+["পল্লী সঞ্চয় ব্যাংক (ম্যানেজার)",["01938-879340"]],
+["মুক্তিযোদ্ধা আদর্শ সরকারি কলেজ, নিকলী (অধ্যক্ষ)",["01942-356410"]]
+]},
+{id:'dis',t:'দুর্যোগ, আবহাওয়া ও নির্বাচন',i:[
+["উপজেলা প্রকল্প বাস্তবায়ন অফিসার (PIO - দুর্যোগ ও ত্রাণ)",["01818-657010"]],
+["উপজেলা নির্বাচন অফিসার (NID ও ভোটার সেবা)",["01724-141964"]],
+["নিকলী আবহাওয়া অফিস (ভারপ্রাপ্ত কর্মকর্তা)",["01718-982815"]],
+["সহকারী প্রোগ্রামার (ICT বিভাগ)",["01717-005269"]],
+["উপজেলা সমবায় অফিসার",["01720-029362"]]
+]},
+{id:'uni',t:'ইউনিয়ন পরিষদ',i:[
+["নিকলী সদর ইউনিয়ন",[],"niklisadarup@gmail.com","niklisadarup.kishoreganj.gov.bd"],
+["দামপাড়া ইউনিয়ন",[],"","damparaup.kishoreganj.gov.bd"],
+["করগাঁও ইউনিয়ন",[],"","kargaonup.kishoreganj.gov.bd"],
+["কারপাশা ইউনিয়ন",[],"","karpashaup.kishoreganj.gov.bd"],
+["জারইতলা ইউনিয়ন",[],"","jaraitalaup.kishoreganj.gov.bd"],
+["গুরুই ইউনিয়ন",[],"","guruaup.kishoreganj.gov.bd"],
+["ছাতিরচর ইউনিয়ন",[],"","chatircharup.kishoreganj.gov.bd"]
+]},
+{id:'hot',t:'জাতীয় হটলাইন',i:[
+["জাতীয় জরুরি সেবা (পুলিশ/ফায়ার/অ্যাম্বুলেন্স)",["999"]],
+["সরকারি তথ্য ও সেবা",["333"]],
+["জাতীয় পরিচয়পত্র (NID) হেল্পলাইন",["105"]],
+["জরুরি স্বাস্থ্য পরামর্শ (ডাক্তার)",["16263"]],
+["হাওর ও আবহাওয়ার দুর্যোগ বার্তা (ফ্রি কল)",["1090"]],
+["জাতীয় আইনি সহায়তা (লিগ্যাল এইড)",["16430"]],
+["নারী ও শিশু নির্যাতন প্রতিরোধ",["109"]],
+["শিশু সহায়তামূলক হেল্পলাইন",["1098"]],
+["দুদক (দুর্নীতি দমন কমিশন)",["106"]],
+["রেলওয়ে তথ্য ও টিকিট সেবা",["131"]]
+]}
+];
+
+var SOS=[["999","পুলিশ/ফায়ার"],["16263","ডাক্তার"],["109","নারী ও শিশু"],["1090","দুর্যোগ"]];
+var IC={
+call:'<svg width="16" height="16" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>',
+copy:'<svg width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>',
+mail:'<svg width="16" height="16" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
+web:'<svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54A1.99 1.99 0 0016 16h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
+star:'<svg class="starsvg" width="24" height="24" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'
+};
+
+var cat='all', query='', favs=[];
+try{favs=JSON.parse(localStorage.getItem('fav')||'[]')}catch(e){}
+function saveFav(){try{localStorage.setItem('fav',JSON.stringify(favs))}catch(e){}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function tel(n){return 'tel:'+n.replace(/[^0-9+]/g,'')}
+var toastT;
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.className='show';clearTimeout(toastT);toastT=setTimeout(function(){t.className=''},1600)}
+function copy(txt){
+  function fb(){var a=document.createElement('textarea');a.value=txt;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a)}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).catch(fb)}else fb()}catch(e){fb()}
+  toast('কপি হয়েছে: '+txt);
+}
+
+function card(it){
+  var n=it[0],ph=it[1],em=it[2],wb=it[3],on=favs.indexOf(n)>-1;
+  var h='<div class="card"><div class="top"><div class="nm">'+esc(n)+'</div><button class="star'+(on?' on':'')+'" data-fav="'+esc(n)+'" aria-label="প্রিয়">'+IC.star+'</button></div><div class="row">';
+  ph.forEach(function(p){
+    h+='<a class="btn call" href="'+tel(p)+'">'+IC.call+p+'</a>';
+    h+='<button class="btn sm" data-copy="'+p+'" aria-label="কপি">'+IC.copy+'</button>';
+  });
+  if(em)h+='<a class="btn sm" href="mailto:'+esc(em)+'">'+IC.mail+esc(em)+'</a>';
+  if(wb)h+='<a class="btn sm" href="https://'+esc(wb)+'">'+IC.web+esc(wb)+'</a>';
+  return h+'</div></div>';
+}
+
+function render(){
+  var q=query.trim().toLowerCase(), out='', found=0;
+  if(cat==='all'&&!q){
+    out+='<div class="sos"><h3>জরুরি প্রয়োজনে</h3><div class="sosrow">';
+    SOS.forEach(function(s){out+='<a href="'+tel(s[0])+'"><b>'+s[0]+'</b><span>'+s[1]+'</span></a>'});
+    out+='</div></div>';
+  }
+  out+='<div class="chips"><button class="chip'+(cat==='all'?' on':'')+'" data-cat="all">সব</button><button class="chip'+(cat==='fav'?' on':'')+'" data-cat="fav">প্রিয়</button>';
+  D.forEach(function(s){out+='<button class="chip'+(cat===s.id?' on':'')+'" data-cat="'+s.id+'">'+s.t+'</button>'});
+  out+='</div>';
+  D.forEach(function(s){
+    if(cat!=='all'&&cat!=='fav'&&cat!==s.id)return;
+    var items=s.i.filter(function(it){
+      if(cat==='fav'&&favs.indexOf(it[0])<0)return false;
+      if(!q)return true;
+      return (it[0]+' '+it[1].join(' ')+' '+(it[2]||'')+' '+(it[3]||'')+' '+s.t).toLowerCase().indexOf(q)>-1;
+    });
+    if(!items.length)return;
+    found+=items.length;
+    out+='<div class="sec">'+s.t+'</div>';
+    items.forEach(function(it){out+=card(it)});
+  });
+  if(!found)out+='<div class="empty">'+(cat==='fav'&&!q?'কোনো প্রিয় নম্বর নেই। কার্ডের তারা চিহ্নে চাপ দিয়ে যোগ করুন।':'কিছু পাওয়া যায়নি')+'</div>';
+  out+='<div class="foot">নিকলী, কিশোরগঞ্জ</div>';
+  document.getElementById('main').innerHTML=out;
+}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-cat],[data-copy],[data-fav]');
+  if(!b)return;
+  var m=document.getElementById('main'), top=m.scrollTop;
+  if(b.dataset.cat){cat=b.dataset.cat;render();m.scrollTop=0}
+  else if(b.dataset.copy){copy(b.dataset.copy)}
+  else if(b.dataset.fav){
+    var n=b.dataset.fav,k=favs.indexOf(n);
+    if(k>-1)favs.splice(k,1);else favs.push(n);
+    saveFav();render();m.scrollTop=top;
+    toast(k>-1?'প্রিয় থেকে সরানো হয়েছে':'প্রিয়তে যোগ হয়েছে');
+  }
+});
+var qi=document.getElementById('q'),cl=document.getElementById('clr');
+qi.addEventListener('input',function(){query=qi.value;cl.style.display=query?'block':'none';render()});
+cl.addEventListener('click',function(){qi.value='';query='';cl.style.display='none';render();qi.focus()});
+window.goBack=function(){
+  if(query){qi.value='';query='';cl.style.display='none';render();return true}
+  if(cat!=='all'){cat='all';render();return true}
+  return false;
+};
+render();
+</script>
+</body>
+</html>
+
+===== END FILE =====
+
